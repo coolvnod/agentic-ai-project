@@ -7,13 +7,17 @@ import type { CharacterAnim, Direction, AgentAvatar, OwnerAvatar } from '@/lib/t
 interface CharPalette {
   skin: string;
   skinShadow: string;
+  skinDeep: string;
   hair: string;
   hairLight: string;
+  hairShadow: string;
   top: string;
   topLight: string;
+  topShadow: string;
   accent: string;
   accentFrame: string;
   pants: string;
+  pantsLight: string;
   shoes: string;
   eyes: string;
 }
@@ -26,73 +30,90 @@ function agentPalette(avatar: AgentAvatar, color: string): CharPalette {
     case 'glasses':
       return {
         skin: BASE_SKIN, skinShadow: BASE_SKIN_SHADOW,
+        skinDeep: '#D4A67F',
         hair: '#2D1B00', hairLight: '#4A2F10',
+        hairShadow: '#1F1300',
         top: '#2D2D3D', topLight: '#3D3D4D',
+        topShadow: '#1F1F2D',
         accent: color, accentFrame: '#333333',
-        pants: '#37474F', shoes: '#5D4037', eyes: '#333333',
+        pants: '#37474F', pantsLight: '#546E7A', shoes: '#5D4037', eyes: '#333333',
       };
     case 'hoodie':
       return {
         skin: BASE_SKIN, skinShadow: BASE_SKIN_SHADOW,
+        skinDeep: '#D4A67F',
         hair: '#1A1A1A', hairLight: '#333333',
+        hairShadow: '#0D0D0D',
         top: color, topLight: lighten(color, 20),
+        topShadow: darken(color, 22),
         accent: '#FFFFFF', accentFrame: '#CCCCCC',
-        pants: '#37474F', shoes: '#424242', eyes: '#333333',
+        pants: '#37474F', pantsLight: '#546E7A', shoes: '#424242', eyes: '#333333',
       };
     case 'suit':
       return {
         skin: BASE_SKIN, skinShadow: BASE_SKIN_SHADOW,
+        skinDeep: '#D4A67F',
         hair: '#3E2723', hairLight: '#5D4037',
+        hairShadow: '#2C1B17',
         top: '#263238', topLight: '#37474F',
+        topShadow: '#1A2328',
         accent: color, accentFrame: color,
-        pants: '#1A237E', shoes: '#3E2723', eyes: '#333333',
+        pants: '#1A237E', pantsLight: '#3949AB', shoes: '#3E2723', eyes: '#333333',
       };
     case 'casual':
       return {
         skin: BASE_SKIN, skinShadow: BASE_SKIN_SHADOW,
+        skinDeep: '#D4A67F',
         hair: '#6D4C41', hairLight: '#8D6E63',
+        hairShadow: '#553B33',
         top: color, topLight: lighten(color, 25),
+        topShadow: darken(color, 20),
         accent: '#FFFFFF', accentFrame: '#E0E0E0',
-        pants: '#455A64', shoes: '#795548', eyes: '#333333',
+        pants: '#455A64', pantsLight: '#607D8B', shoes: '#795548', eyes: '#333333',
       };
     case 'robot':
       return {
         skin: '#B0BEC5', skinShadow: '#90A4AE',
+        skinDeep: '#78909C',
         hair: '#546E7A', hairLight: '#78909C',
+        hairShadow: '#455A64',
         top: '#455A64', topLight: '#607D8B',
+        topShadow: '#37474F',
         accent: color, accentFrame: color,
-        pants: '#37474F', shoes: '#263238', eyes: color,
+        pants: '#37474F', pantsLight: '#546E7A', shoes: '#263238', eyes: color,
       };
     case 'cat':
       return {
         skin: '#FFE0B2', skinShadow: '#FFD180',
+        skinDeep: '#F3BC85',
         hair: '#FF8A65', hairLight: '#FFAB91',
+        hairShadow: '#E66745',
         top: color, topLight: lighten(color, 20),
+        topShadow: darken(color, 20),
         accent: '#FF7043', accentFrame: '#E64A19',
-        pants: '#5D4037', shoes: '#4E342E', eyes: '#333333',
+        pants: '#5D4037', pantsLight: '#795548', shoes: '#4E342E', eyes: '#333333',
       };
     case 'dog':
       return {
         skin: '#D7CCC8', skinShadow: '#BCAAA4',
+        skinDeep: '#A1887F',
         hair: '#795548', hairLight: '#8D6E63',
+        hairShadow: '#5D4037',
         top: color, topLight: lighten(color, 20),
+        topShadow: darken(color, 20),
         accent: '#3E2723', accentFrame: '#4E342E',
-        pants: '#455A64', shoes: '#37474F', eyes: '#333333',
+        pants: '#455A64', pantsLight: '#607D8B', shoes: '#37474F', eyes: '#333333',
       };
     default:
       return {
         skin: BASE_SKIN, skinShadow: BASE_SKIN_SHADOW,
+        skinDeep: '#D4A67F',
         hair: '#3E2723', hairLight: '#5D4037',
+        hairShadow: '#2C1B17',
         top: color, topLight: lighten(color, 20),
+        topShadow: darken(color, 20),
         accent: '#CCCCCC', accentFrame: '#999999',
-        pants: '#455A64', shoes: '#795548', eyes: '#333333',
-      };
-      return {
-        skin: '#D7CCC8', skinShadow: '#BCAAA4',
-        hair: '#795548', hairLight: '#8D6E63',
-        top: color, topLight: lighten(color, 20),
-        accent: '#3E2723', accentFrame: '#4E342E',
-        pants: '#455A64', shoes: '#37474F', eyes: '#333333',
+        pants: '#455A64', pantsLight: '#607D8B', shoes: '#795548', eyes: '#333333',
       };
   }
 }
@@ -102,26 +123,35 @@ function ownerPalette(avatar: OwnerAvatar): CharPalette {
     case 'boss':
       return {
         skin: BASE_SKIN, skinShadow: BASE_SKIN_SHADOW,
+        skinDeep: '#D4A67F',
         hair: '#4A2800', hairLight: '#6B3A00',
+        hairShadow: '#351C00',
         top: '#5C6BC0', topLight: '#7986CB',
+        topShadow: '#3F51B5',
         accent: '#FFFFFF', accentFrame: '#E0E0E0',
-        pants: '#37474F', shoes: '#795548', eyes: '#333333',
+        pants: '#37474F', pantsLight: '#546E7A', shoes: '#795548', eyes: '#333333',
       };
     case 'casual':
       return {
         skin: BASE_SKIN, skinShadow: BASE_SKIN_SHADOW,
+        skinDeep: '#D4A67F',
         hair: '#5D4037', hairLight: '#795548',
+        hairShadow: '#4E342E',
         top: '#43A047', topLight: '#66BB6A',
+        topShadow: '#2E7D32',
         accent: '#FFFFFF', accentFrame: '#E0E0E0',
-        pants: '#455A64', shoes: '#6D4C41', eyes: '#333333',
+        pants: '#455A64', pantsLight: '#607D8B', shoes: '#6D4C41', eyes: '#333333',
       };
     case 'creative':
       return {
         skin: BASE_SKIN, skinShadow: BASE_SKIN_SHADOW,
+        skinDeep: '#D4A67F',
         hair: '#880E4F', hairLight: '#AD1457',
+        hairShadow: '#6A0B3D',
         top: '#FF6F00', topLight: '#FFA000',
+        topShadow: '#EF6C00',
         accent: '#FFFFFF', accentFrame: '#FFE0B2',
-        pants: '#37474F', shoes: '#4E342E', eyes: '#333333',
+        pants: '#37474F', pantsLight: '#546E7A', shoes: '#4E342E', eyes: '#333333',
       };
   }
 }
@@ -144,6 +174,14 @@ function lighten(hex: string, pct: number): string {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
+function darken(hex: string, pct: number): string {
+  const n = parseInt(hex.replace('#', ''), 16);
+  const r = Math.max(0, ((n >> 16) & 0xff) - pct);
+  const g = Math.max(0, ((n >> 8) & 0xff) - pct);
+  const b = Math.max(0, (n & 0xff) - pct);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
 function drawCharacter(
   ctx: CanvasRenderingContext2D,
   x: number, y: number,
@@ -157,9 +195,17 @@ function drawCharacter(
 ): void {
   const scale = 2;
   const ox = x - 12;
-  const oy = y - 36;
+  let oy = y - 36;
 
   ctx.save();
+
+  const idleBob = anim === 'sit_idle' || anim === 'headphones'
+    ? Math.sin(tick * 0.09) * 0.7
+    : 0;
+  oy += idleBob;
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+  ctx.fillRect(x - 10, y + 2, 20, 3);
 
   if (direction === 'w') {
     ctx.translate(x, 0);
@@ -181,7 +227,9 @@ function drawCharacter(
   ctx.fillText(emoji, x, oy + 2);
   ctx.restore();
 
-  // Hair
+  // Hair with shadow rim
+  px(ctx, 2, 3, palette.hairShadow, scale, ox, oy);
+  px(ctx, 9, 3, palette.hairShadow, scale, ox, oy);
   for (let i = 3; i <= 8; i++) px(ctx, i, 2, palette.hair, scale, ox, oy);
   for (let i = 2; i <= 9; i++) px(ctx, i, 3, palette.hair, scale, ox, oy);
 
@@ -196,6 +244,8 @@ function drawCharacter(
   for (let i = 3; i <= 8; i++) px(ctx, i, 5, palette.skin, scale, ox, oy);
   for (let i = 3; i <= 8; i++) px(ctx, i, 6, palette.skin, scale, ox, oy);
   for (let i = 4; i <= 7; i++) px(ctx, i, 7, palette.skin, scale, ox, oy);
+  px(ctx, 3, 7, palette.skinShadow, scale, ox, oy);
+  px(ctx, 8, 7, palette.skinShadow, scale, ox, oy);
 
   if (hasGlasses) {
     px(ctx, 4, 5, palette.accentFrame, scale, ox, oy);
@@ -217,6 +267,7 @@ function drawCharacter(
   // Mouth
   px(ctx, 5, 7, palette.skinShadow, scale, ox, oy);
   px(ctx, 6, 7, palette.skinShadow, scale, ox, oy);
+  px(ctx, 6, 6, palette.skinDeep, scale, ox, oy);
 
   drawBody(ctx, anim, frame, palette, scale, ox, oy);
 
@@ -233,7 +284,7 @@ function drawBody(
   if (anim === 'sit_typing' || anim === 'sit_idle') {
     for (let row = 8; row <= 11; row++) {
       for (let i = 3; i <= 8; i++) {
-        px(ctx, i, row, row === 8 ? p.topLight : p.top, scale, ox, oy);
+        px(ctx, i, row, row === 8 ? p.topLight : row === 11 ? p.topShadow : p.top, scale, ox, oy);
       }
     }
     px(ctx, 5, 10, p.topLight, scale, ox, oy);
@@ -267,7 +318,7 @@ function drawBody(
   } else if (anim === 'walk_frame1' || anim === 'walk_frame2') {
     for (let row = 8; row <= 12; row++) {
       for (let i = 3; i <= 8; i++) {
-        px(ctx, i, row, row === 8 ? p.topLight : p.top, scale, ox, oy);
+        px(ctx, i, row, row === 8 ? p.topLight : row === 12 ? p.topShadow : p.top, scale, ox, oy);
       }
     }
     if (anim === 'walk_frame1') {
@@ -293,7 +344,7 @@ function drawBody(
   } else if (anim === 'drink_coffee') {
     for (let row = 8; row <= 12; row++) {
       for (let i = 3; i <= 8; i++) {
-        px(ctx, i, row, row === 8 ? p.topLight : p.top, scale, ox, oy);
+        px(ctx, i, row, row === 8 ? p.topLight : row === 12 ? p.topShadow : p.top, scale, ox, oy);
       }
     }
     px(ctx, 2, 9, p.top, scale, ox, oy);
@@ -314,7 +365,7 @@ function drawBody(
   } else if (anim === 'raise_hand') {
     for (let row = 8; row <= 12; row++) {
       for (let i = 3; i <= 8; i++) {
-        px(ctx, i, row, row === 8 ? p.topLight : p.top, scale, ox, oy);
+        px(ctx, i, row, row === 8 ? p.topLight : row === 12 ? p.topShadow : p.top, scale, ox, oy);
       }
     }
     px(ctx, 2, 9, p.top, scale, ox, oy);
@@ -350,7 +401,7 @@ function drawBody(
         if (i >= 5 && i <= 6 && row >= 9) {
           px(ctx, i, row, p.accent, scale, ox, oy);
         } else {
-          px(ctx, i, row, row === 8 ? p.topLight : p.top, scale, ox, oy);
+          px(ctx, i, row, row === 8 ? p.topLight : row === 12 ? p.topShadow : p.top, scale, ox, oy);
         }
       }
     }
@@ -367,7 +418,7 @@ function drawBody(
         if (i >= 5 && i <= 6 && row >= 9) {
           px(ctx, i, row, p.accent, scale, ox, oy);
         } else {
-          px(ctx, i, row, row === 8 ? p.topLight : p.top, scale, ox, oy);
+          px(ctx, i, row, row === 8 ? p.topLight : row === 12 ? p.topShadow : p.top, scale, ox, oy);
         }
       }
     }
@@ -384,7 +435,7 @@ function drawBody(
   } else if (anim === 'run') {
     for (let row = 8; row <= 12; row++) {
       for (let i = 3; i <= 8; i++) {
-        px(ctx, i, row, row === 8 ? p.topLight : p.top, scale, ox, oy);
+        px(ctx, i, row, row === 8 ? p.topLight : row === 12 ? p.topShadow : p.top, scale, ox, oy);
       }
     }
     // Running arms
@@ -402,7 +453,7 @@ function drawBody(
     // Default standing pose
     for (let row = 8; row <= 12; row++) {
       for (let i = 3; i <= 8; i++) {
-        px(ctx, i, row, row === 8 ? p.topLight : p.top, scale, ox, oy);
+        px(ctx, i, row, row === 8 ? p.topLight : row === 12 ? p.topShadow : p.top, scale, ox, oy);
       }
     }
     px(ctx, 5, 10, p.topLight, scale, ox, oy);
@@ -420,7 +471,9 @@ function drawStandingLegs(
   p: CharPalette,
   scale: number, ox: number, oy: number,
 ): void {
-  for (let i = 4; i <= 7; i++) px(ctx, i, 13, p.pants, scale, ox, oy);
+  for (let i = 4; i <= 7; i++) px(ctx, i, 13, p.pantsLight, scale, ox, oy);
+  px(ctx, 4, 12, p.pants, scale, ox, oy);
+  px(ctx, 7, 12, p.pants, scale, ox, oy);
   px(ctx, 4, 14, p.shoes, scale, ox, oy);
   px(ctx, 5, 14, p.shoes, scale, ox, oy);
   px(ctx, 6, 14, p.shoes, scale, ox, oy);
@@ -462,6 +515,8 @@ export function drawNameTag(
   ctx.save();
   ctx.font = 'bold 9px monospace';
   ctx.textAlign = 'center';
+  ctx.fillStyle = '#00000080';
+  ctx.fillText(name, x + 1, y + 5);
   ctx.fillStyle = color;
   ctx.fillText(name, x, y + 4);
   ctx.restore();

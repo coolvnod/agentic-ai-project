@@ -335,12 +335,32 @@ export function useAgents(forceDemoMode = false): UseAgentsReturn {
       if (!data.ok || !data.sessions?.length) {
         setConnected(false);
         setDemoMode(false);
-        setAgents([]);
-        setAgentStates({});
+        setAgents(customAgents.map(applyRenamedName));
+        setAgentStates(() => {
+          const fallback: Record<string, AgentDashboardState> = {};
+          for (const customAgent of customAgents) {
+            fallback[customAgent.id] = {
+              behavior: 'idle',
+              officeState: 'idle',
+              currentTask: null,
+              taskHistory: [],
+              tokenUsage: [],
+              totalTokens: 0,
+              totalTasks: 0,
+              lastActivity: Date.now(),
+              sessionLog: ['Model: local/manual'],
+              statusSummary: 'Manual agent — waiting for work',
+              uptime: 0,
+            };
+          }
+          return fallback;
+        });
         setSessionKeys({});
         keyToIdRef.current = {};
         setSystemStats((prev) => ({
           ...createDisconnectedStats(),
+          totalAgents: customAgents.length,
+          mainAgents: customAgents.length,
           totalBroadcasts: prev.totalBroadcasts ?? 0,
         }));
         return false;
@@ -406,7 +426,7 @@ export function useAgents(forceDemoMode = false): UseAgentsReturn {
 
       setSystemStats({
         totalAgents: sortedSessions.length + customAgents.length,
-        mainAgents: sortedSessions.filter((s) => !s.isSubagent).length,
+        mainAgents: sortedSessions.filter((s) => !s.isSubagent).length + customAgents.length,
         subAgents: sortedSessions.filter((s) => s.isSubagent).length,
         activeAgents: sortedSessions.filter((s) => s.isActive).length,
         totalTokens: sortedSessions.reduce((sum, s) => sum + s.totalTokens, 0),

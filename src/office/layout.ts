@@ -17,28 +17,28 @@ export const MAP_ROWS = 20;
 // ---------------------------------------------------------------------------
 
 export function getFloorColor(col: number, row: number): string {
-  // Checkerboard pattern with zone-based tinting
-  const base = (col + row) % 2 === 0 ? '#D7CCC8' : '#CFBFB5';
+  // Softer studio-like palette with subtle checker tint
+  const base = (col + row) % 2 === 0 ? '#C9CDD2' : '#C1C6CB';
 
   // Boss office area — darker wood
   if (col >= 12 && col <= 16 && row >= 1 && row <= 4) {
-    return (col + row) % 2 === 0 ? '#A1887F' : '#8D6E63';
+    return (col + row) % 2 === 0 ? '#C9B79D' : '#BCAB92';
   }
   // Meeting room — blue tint
   if (col >= 12 && col <= 16 && row >= 6 && row <= 9) {
-    return (col + row) % 2 === 0 ? '#B3C5D7' : '#A4B8CC';
+    return (col + row) % 2 === 0 ? '#B7C7D8' : '#A9BACE';
   }
   // Break room — warm tint
   if (col >= 18 && col <= 22 && row >= 1 && row <= 5) {
-    return (col + row) % 2 === 0 ? '#E8D5B7' : '#DDC9AB';
+    return (col + row) % 2 === 0 ? '#DDD0BA' : '#D1C3AD';
   }
   // Lounge — purple tint
   if (col >= 18 && col <= 22 && row >= 12 && row <= 16) {
-    return (col + row) % 2 === 0 ? '#D1C4E9' : '#C5B6DF';
+    return (col + row) % 2 === 0 ? '#C4BFE0' : '#B6B1D3';
   }
   // Server room — dark
   if (col >= 18 && col <= 22 && row >= 7 && row <= 10) {
-    return (col + row) % 2 === 0 ? '#455A64' : '#37474F';
+    return (col + row) % 2 === 0 ? '#334554' : '#293845';
   }
 
   return base;

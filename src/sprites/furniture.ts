@@ -6,6 +6,18 @@ import type { FurnitureType } from '@/lib/types';
 import { gridToScreen, TILE_W, TILE_H } from '@/engine/isometric';
 import { drawIsometricBlock } from '@/engine/isometric';
 
+const PALETTE = {
+  line: '#2E3A44',
+  woodTop: '#C8AD8A',
+  woodLeft: '#AF9475',
+  woodRight: '#998065',
+  steelTop: '#8FA1AF',
+  steelLeft: '#718492',
+  steelRight: '#5F717D',
+  screen: '#7FD1F4',
+  screenDark: '#263746',
+};
+
 function px(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, w: number, h: number,
@@ -22,30 +34,39 @@ function px(
 function drawDesk(ctx: CanvasRenderingContext2D, col: number, row: number, tick: number): void {
   const { x, y } = gridToScreen({ col, row });
   // Desk top
-  drawIsometricBlock(ctx, { col, row }, 14, '#8D6E63', '#6D4C41', '#5D4037');
+  drawIsometricBlock(ctx, { col, row }, 14, PALETTE.woodTop, PALETTE.woodLeft, PALETTE.woodRight);
+  // Top rim highlight
+  px(ctx, x - 14, y - 16, 28, 1, '#E6D1B8');
+  px(ctx, x - 14, y - 15, 1, 12, '#8D7459');
+  px(ctx, x + 13, y - 15, 1, 12, '#7D664F');
   // Monitor
   const monY = y - 26;
-  px(ctx, x - 8, monY - 12, 16, 12, '#263238');
-  px(ctx, x - 6, monY - 10, 12, 8, '#4FC3F7');
+  px(ctx, x - 8, monY - 12, 16, 12, PALETTE.screenDark);
+  px(ctx, x - 6, monY - 10, 12, 8, PALETTE.screen);
   // Screen flicker
   if (tick % 60 < 55) {
-    px(ctx, x - 4, monY - 8, 8, 4, '#80DEEA');
+    px(ctx, x - 5, monY - 8, 10, 1, '#B8ECFD');
+    px(ctx, x - 2, monY - 6, 4, 1, '#B8ECFD');
   }
   // Monitor stand
-  px(ctx, x - 2, monY, 4, 3, '#455A64');
+  px(ctx, x - 2, monY, 4, 3, '#5E7382');
   // Keyboard
-  px(ctx, x - 6, y - 10, 12, 4, '#37474F');
-  px(ctx, x - 5, y - 9, 10, 2, '#546E7A');
+  px(ctx, x - 6, y - 10, 12, 4, '#445963');
+  px(ctx, x - 5, y - 9, 10, 2, '#627985');
+  // Mouse + pad
+  px(ctx, x + 7, y - 10, 3, 3, '#2A3B46');
+  px(ctx, x + 6, y - 9, 5, 1, '#708996');
 }
 
 function drawChair(ctx: CanvasRenderingContext2D, col: number, row: number): void {
   const { x, y } = gridToScreen({ col, row });
   // Seat
-  px(ctx, x - 8, y - 6, 16, 4, '#455A64');
+  px(ctx, x - 8, y - 6, 16, 4, '#6D7E8B');
+  px(ctx, x - 6, y - 5, 12, 2, '#8FA1AF');
   // Back
-  px(ctx, x - 8, y - 16, 3, 12, '#546E7A');
-  px(ctx, x + 5, y - 16, 3, 12, '#546E7A');
-  px(ctx, x - 8, y - 16, 16, 3, '#546E7A');
+  px(ctx, x - 8, y - 16, 3, 12, '#5D6E7D');
+  px(ctx, x + 5, y - 16, 3, 12, '#5D6E7D');
+  px(ctx, x - 8, y - 16, 16, 3, '#7F93A2');
   // Legs
   px(ctx, x - 6, y - 2, 2, 4, '#333333');
   px(ctx, x + 4, y - 2, 2, 4, '#333333');
@@ -57,15 +78,15 @@ function drawChair(ctx: CanvasRenderingContext2D, col: number, row: number): voi
 function drawBigDesk(ctx: CanvasRenderingContext2D, col: number, row: number, tick: number): void {
   const { x, y } = gridToScreen({ col, row });
   // Large desk surface
-  drawIsometricBlock(ctx, { col, row }, 14, '#A1887F', '#8D6E63', '#795548');
+  drawIsometricBlock(ctx, { col, row }, 14, '#B89D84', '#9D856F', '#866F5D');
   // Dual monitors
-  px(ctx, x - 16, y - 28, 14, 10, '#263238');
-  px(ctx, x - 14, y - 26, 10, 6, tick % 80 < 75 ? '#4FC3F7' : '#81D4FA');
-  px(ctx, x + 2, y - 28, 14, 10, '#263238');
-  px(ctx, x + 4, y - 26, 10, 6, tick % 80 < 70 ? '#66BB6A' : '#A5D6A7');
+  px(ctx, x - 16, y - 28, 14, 10, '#2B3A46');
+  px(ctx, x - 14, y - 26, 10, 6, tick % 80 < 75 ? '#82D2F2' : '#B5E9FB');
+  px(ctx, x + 2, y - 28, 14, 10, '#2B3A46');
+  px(ctx, x + 4, y - 26, 10, 6, tick % 80 < 70 ? '#8CD0A6' : '#B7E7C8');
   // Stands
-  px(ctx, x - 10, y - 18, 3, 4, '#455A64');
-  px(ctx, x + 7, y - 18, 3, 4, '#455A64');
+  px(ctx, x - 10, y - 18, 3, 4, '#6B7F8E');
+  px(ctx, x + 7, y - 18, 3, 4, '#6B7F8E');
 }
 
 function drawMonitor(ctx: CanvasRenderingContext2D, col: number, row: number, tick: number): void {
@@ -94,6 +115,7 @@ function drawFloorWindow(ctx: CanvasRenderingContext2D, col: number, row: number
   px(ctx, x + 1, y - 21, 15, 15, '#81D4FA');
   // Clouds
   px(ctx, x - 10 + (tick % 60) / 3, y - 34, 6, 2, '#FFFFFFB0');
+  px(ctx, x - 2 + (tick % 90) / 4, y - 30, 5, 2, '#FFFFFF80');
   // Dividers
   px(ctx, x - 1, y - 38, 2, 34, '#455A64');
   px(ctx, x - 16, y - 22, 32, 2, '#455A64');
@@ -102,12 +124,13 @@ function drawFloorWindow(ctx: CanvasRenderingContext2D, col: number, row: number
 function drawCoffeeMachine(ctx: CanvasRenderingContext2D, col: number, row: number, tick: number): void {
   const { x, y } = gridToScreen({ col, row });
   // Machine body
-  px(ctx, x - 8, y - 24, 16, 20, '#455A64');
-  px(ctx, x - 6, y - 22, 12, 8, '#263238');
+  px(ctx, x - 8, y - 24, 16, 20, '#7C8D99');
+  px(ctx, x - 6, y - 22, 12, 8, '#32414B');
   // Indicator light
   px(ctx, x - 4, y - 12, 3, 3, tick % 40 < 20 ? '#4CAF50' : '#1B5E20');
   // Cup slot
-  px(ctx, x + 1, y - 12, 5, 8, '#37474F');
+  px(ctx, x + 1, y - 12, 5, 8, '#3D515B');
+  px(ctx, x - 7, y - 7, 14, 1, '#AAB9C3');
   // Steam
   if (tick % 30 < 20) {
     ctx.fillStyle = '#FFFFFF40';
@@ -134,7 +157,7 @@ function drawSnackShelf(ctx: CanvasRenderingContext2D, col: number, row: number)
 function drawWaterCooler(ctx: CanvasRenderingContext2D, col: number, row: number, tick: number): void {
   const { x, y } = gridToScreen({ col, row });
   // Body
-  px(ctx, x - 6, y - 20, 12, 16, '#ECEFF1');
+  px(ctx, x - 6, y - 20, 12, 16, '#D9E1E7');
   // Water bottle on top
   px(ctx, x - 4, y - 30, 8, 10, '#42A5F5');
   px(ctx, x - 3, y - 32, 6, 3, '#64B5F6');
@@ -142,7 +165,7 @@ function drawWaterCooler(ctx: CanvasRenderingContext2D, col: number, row: number
   const level = 4 + Math.sin(tick * 0.05) * 1;
   px(ctx, x - 3, y - 20 - level, 6, level, '#1E88E5');
   // Tap
-  px(ctx, x + 4, y - 10, 3, 3, '#B0BEC5');
+  px(ctx, x + 4, y - 10, 3, 3, '#8BA0AC');
 }
 
 function drawSmallTable(ctx: CanvasRenderingContext2D, col: number, row: number): void {
@@ -186,6 +209,9 @@ function drawWhiteboard(ctx: CanvasRenderingContext2D, col: number, row: number,
   ctx.lineTo(x + 4, y - 26);
   ctx.lineTo(x + 12, y - 16);
   ctx.stroke();
+  // Extra sticky notes
+  px(ctx, x - 14, y - 30, 4, 4, '#FFF176');
+  px(ctx, x + 8, y - 22, 4, 4, '#FFAB91');
   // Red dot (animated)
   if (tick % 60 < 40) {
     ctx.fillStyle = '#F44336';
@@ -203,10 +229,10 @@ function drawWhiteboard(ctx: CanvasRenderingContext2D, col: number, row: number,
 function drawBookshelf(ctx: CanvasRenderingContext2D, col: number, row: number): void {
   const { x, y } = gridToScreen({ col, row });
   // Frame
-  px(ctx, x - 12, y - 34, 24, 30, '#4E342E');
+  px(ctx, x - 12, y - 34, 24, 30, '#6D5945');
   // Shelves
-  px(ctx, x - 10, y - 22, 20, 2, '#5D4037');
-  px(ctx, x - 10, y - 12, 20, 2, '#5D4037');
+  px(ctx, x - 10, y - 22, 20, 2, '#846A52');
+  px(ctx, x - 10, y - 12, 20, 2, '#846A52');
   // Books
   const bookColors = ['#F44336', '#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#795548', '#FFCA28', '#00BCD4'];
   for (let shelf = 0; shelf < 3; shelf++) {
@@ -263,28 +289,32 @@ function drawCoffeeTable(ctx: CanvasRenderingContext2D, col: number, row: number
 function drawServerRack(ctx: CanvasRenderingContext2D, col: number, row: number, tick: number): void {
   const { x, y } = gridToScreen({ col, row });
   // Rack body
-  px(ctx, x - 10, y - 36, 20, 32, '#263238');
-  px(ctx, x - 8, y - 34, 16, 28, '#1A1A2E');
+  px(ctx, x - 10, y - 36, 20, 32, '#263543');
+  px(ctx, x - 8, y - 34, 16, 28, '#18222B');
   // Server units
   for (let i = 0; i < 4; i++) {
     const uy = y - 32 + i * 7;
-    px(ctx, x - 7, uy, 14, 5, '#37474F');
+    px(ctx, x - 7, uy, 14, 5, '#405261');
     // Blinking lights
     const lightOn = ((tick + i * 7) % 20) < 14;
     px(ctx, x - 5, uy + 1, 2, 2, lightOn ? '#4CAF50' : '#1B5E20');
     px(ctx, x - 2, uy + 1, 2, 2, ((tick + i * 3) % 30) < 25 ? '#4FC3F7' : '#0D47A1');
     // Vent lines
     for (let v = 0; v < 3; v++) {
-      px(ctx, x + 2 + v * 2, uy + 1, 1, 3, '#455A64');
+      px(ctx, x + 2 + v * 2, uy + 1, 1, 3, '#607684');
     }
+  }
+  // Side rail glow
+  if (tick % 40 < 24) {
+    px(ctx, x + 9, y - 34, 1, 28, '#4FC3F780');
   }
 }
 
 function drawMeetingChair(ctx: CanvasRenderingContext2D, col: number, row: number): void {
   const { x, y } = gridToScreen({ col, row });
   // Simple chair
-  px(ctx, x - 6, y - 6, 12, 4, '#78909C');
-  px(ctx, x - 6, y - 14, 12, 10, '#607D8B');
+  px(ctx, x - 6, y - 6, 12, 4, '#8A9DA8');
+  px(ctx, x - 6, y - 14, 12, 10, '#6E8594');
   // Legs
   px(ctx, x - 4, y - 2, 2, 4, '#37474F');
   px(ctx, x + 2, y - 2, 2, 4, '#37474F');
@@ -305,21 +335,21 @@ function drawDoorMat(ctx: CanvasRenderingContext2D, col: number, row: number): v
 function drawPottedPlant(ctx: CanvasRenderingContext2D, col: number, row: number, tick: number): void {
   const { x, y } = gridToScreen({ col, row });
   // Pot
-  px(ctx, x - 5, y - 8, 10, 8, '#D84315');
-  px(ctx, x - 6, y - 8, 12, 2, '#BF360C');
+  px(ctx, x - 5, y - 8, 10, 8, '#B96D4A');
+  px(ctx, x - 6, y - 8, 12, 2, '#9A5639');
   // Soil
   px(ctx, x - 4, y - 10, 8, 3, '#3E2723');
   // Leaves (swaying)
   const sway = Math.sin(tick * 0.04) * 1.5;
-  ctx.fillStyle = '#2E7D32';
+  ctx.fillStyle = '#3A7C47';
   ctx.beginPath();
   ctx.ellipse(x + sway, y - 18, 6, 4, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#388E3C';
+  ctx.fillStyle = '#4A9660';
   ctx.beginPath();
   ctx.ellipse(x - 3 + sway * 0.5, y - 22, 5, 3, -0.3, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#43A047';
+  ctx.fillStyle = '#67A86A';
   ctx.beginPath();
   ctx.ellipse(x + 3 - sway * 0.5, y - 20, 4, 3, 0.3, 0, Math.PI * 2);
   ctx.fill();
@@ -329,7 +359,7 @@ function drawPottedPlant(ctx: CanvasRenderingContext2D, col: number, row: number
 
 function drawCarpet(ctx: CanvasRenderingContext2D, col: number, row: number): void {
   const { x, y } = gridToScreen({ col, row });
-  ctx.fillStyle = '#AD145780';
+  ctx.fillStyle = '#7A4A9C66';
   ctx.beginPath();
   ctx.moveTo(x, y - TILE_H / 2);
   ctx.lineTo(x + TILE_W / 2, y);
@@ -338,7 +368,7 @@ function drawCarpet(ctx: CanvasRenderingContext2D, col: number, row: number): vo
   ctx.closePath();
   ctx.fill();
   // Pattern
-  ctx.fillStyle = '#880E4F40';
+  ctx.fillStyle = '#9E6BC040';
   ctx.beginPath();
   ctx.moveTo(x, y - TILE_H / 4);
   ctx.lineTo(x + TILE_W / 4, y);
@@ -383,17 +413,18 @@ function drawWallClock(ctx: CanvasRenderingContext2D, col: number, row: number, 
 function drawPoster(ctx: CanvasRenderingContext2D, col: number, row: number): void {
   const { x, y } = gridToScreen({ col, row });
   // Frame
-  px(ctx, x - 8, y - 30, 16, 20, '#37474F');
+  px(ctx, x - 8, y - 30, 16, 20, '#435766');
   // Poster content
-  px(ctx, x - 6, y - 28, 12, 16, '#1A237E');
+  px(ctx, x - 6, y - 28, 12, 16, '#3D568E');
   // "AI" text
-  ctx.fillStyle = '#4FC3F7';
+  ctx.fillStyle = '#CBE8F7';
   ctx.font = 'bold 8px monospace';
   ctx.textAlign = 'center';
   ctx.fillText('AI', x, y - 18);
   // Stars
   px(ctx, x - 4, y - 26, 2, 2, '#FFCA28');
   px(ctx, x + 3, y - 24, 2, 2, '#FFCA28');
+  px(ctx, x - 1, y - 22, 1, 1, '#FFFFFF');
 }
 
 // ---------------------------------------------------------------------------

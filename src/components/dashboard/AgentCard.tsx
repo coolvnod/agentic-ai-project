@@ -16,6 +16,7 @@ interface AgentCardProps {
   state: AgentDashboardState | undefined;
   onChatClick: (agentId: string) => void;
   onRestart?: (agentId: string) => void;
+  onSelect?: (agentId: string) => void;
 }
 
 function PixelAvatar({ agent, size = 48 }: { agent: AgentConfig; size?: number }) {
@@ -61,7 +62,7 @@ function TokenBar({ used, max }: { used: number; max: number }) {
   );
 }
 
-export default function AgentCard({ agent, state, onChatClick, onRestart }: AgentCardProps) {
+export default function AgentCard({ agent, state, onChatClick, onRestart, onSelect }: AgentCardProps) {
   const [relativeTime, setRelativeTime] = useState('');
   const [restarting, setRestarting] = useState(false);
   const behavior = state?.behavior ?? 'idle';
@@ -90,6 +91,7 @@ export default function AgentCard({ agent, state, onChatClick, onRestart }: Agen
 
   return (
     <div
+      onClick={() => onSelect?.(agent.id)}
       className="group relative rounded-2xl p-4 transition-all duration-300 hover:scale-[1.02] cursor-pointer hud-panel"
       style={{
         backgroundColor: 'var(--bg-card)',

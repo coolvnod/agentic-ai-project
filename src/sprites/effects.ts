@@ -64,9 +64,9 @@ function drawZzz(ctx: CanvasRenderingContext2D, x: number, y: number, progress: 
 }
 
 function drawSparkle(ctx: CanvasRenderingContext2D, x: number, y: number, progress: number): void {
-  const size = 3 + (1 - progress) * 4;
+  const size = 2 + (1 - progress) * 3;
   const sparkY = y - 10 - progress * 15;
-  ctx.fillStyle = '#FFCA28';
+  ctx.fillStyle = '#F8E6A8';
   // Star shape (simple cross)
   ctx.fillRect(x - 1, sparkY - size / 2, 2, size);
   ctx.fillRect(x - size / 2, sparkY - 1, size, 2);
@@ -82,7 +82,7 @@ function drawSparkle(ctx: CanvasRenderingContext2D, x: number, y: number, progre
 function drawCodeRain(ctx: CanvasRenderingContext2D, x: number, y: number, progress: number): void {
   const chars = '01{}();=>const_let_fn';
   ctx.font = '7px monospace';
-  ctx.fillStyle = '#4FC3F7';
+  ctx.fillStyle = '#9AD4EC';
   for (let i = 0; i < 5; i++) {
     const cx = x - 8 + i * 5 + Math.sin(progress * 6 + i) * 3;
     const cy = y - 20 + progress * 30 + i * 4;
@@ -95,7 +95,7 @@ function drawCodeRain(ctx: CanvasRenderingContext2D, x: number, y: number, progr
 function drawQuestion(ctx: CanvasRenderingContext2D, x: number, y: number, progress: number): void {
   const qy = y - 10 - progress * 15;
   ctx.font = 'bold 12px monospace';
-  ctx.fillStyle = '#FF9800';
+  ctx.fillStyle = '#EBC07C';
   ctx.textAlign = 'center';
   ctx.fillText('?', x, qy);
 }
@@ -103,13 +103,13 @@ function drawQuestion(ctx: CanvasRenderingContext2D, x: number, y: number, progr
 function drawCheck(ctx: CanvasRenderingContext2D, x: number, y: number, progress: number): void {
   const cy = y - 10 - progress * 15;
   ctx.font = 'bold 12px monospace';
-  ctx.fillStyle = '#66BB6A';
+  ctx.fillStyle = '#96C89A';
   ctx.textAlign = 'center';
   ctx.fillText('✓', x, cy);
 }
 
 function drawCoffeeSteam(ctx: CanvasRenderingContext2D, x: number, y: number, progress: number): void {
-  ctx.fillStyle = '#FFFFFF';
+  ctx.fillStyle = '#F0F4F7';
   for (let i = 0; i < 3; i++) {
     const sx = x + Math.sin(progress * 4 + i * 2) * 4;
     const sy = y - 10 - progress * 20 - i * 5;
@@ -122,7 +122,7 @@ function drawCoffeeSteam(ctx: CanvasRenderingContext2D, x: number, y: number, pr
 }
 
 function drawSmoke(ctx: CanvasRenderingContext2D, x: number, y: number, progress: number): void {
-  ctx.fillStyle = '#78909C';
+  ctx.fillStyle = '#8FA0AB';
   for (let i = 0; i < 4; i++) {
     const sx = x + Math.sin(progress * 3 + i * 1.5) * 6;
     const sy = y - 5 - progress * 25 - i * 4;
@@ -138,7 +138,7 @@ function drawError(ctx: CanvasRenderingContext2D, x: number, y: number, progress
   const ey = y - 10 - progress * 10;
   const size = 6 + (1 - progress) * 4;
   // Red circle
-  ctx.fillStyle = '#EF5350';
+  ctx.fillStyle = '#D66E6B';
   ctx.beginPath();
   ctx.arc(x, ey, size, 0, Math.PI * 2);
   ctx.fill();
@@ -155,7 +155,7 @@ function drawError(ctx: CanvasRenderingContext2D, x: number, y: number, progress
 
 function drawLightning(ctx: CanvasRenderingContext2D, x: number, y: number, progress: number): void {
   const ly = y - 20 - progress * 5;
-  ctx.strokeStyle = '#FFCA28';
+  ctx.strokeStyle = '#F3D083';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(x, ly - 8);
@@ -164,7 +164,7 @@ function drawLightning(ctx: CanvasRenderingContext2D, x: number, y: number, prog
   ctx.lineTo(x - 2, ly + 6);
   ctx.stroke();
   // Glow
-  ctx.shadowColor = '#FFCA28';
+  ctx.shadowColor = '#F3D083';
   ctx.shadowBlur = 6;
   ctx.stroke();
   ctx.shadowBlur = 0;
@@ -187,17 +187,17 @@ export function drawBubble(ctx: CanvasRenderingContext2D, bubble: Bubble): void 
   const bx = bubble.x - bw / 2;
   const by = bubble.y - bh - 8;
 
-  // Bubble background
-  ctx.fillStyle = '#FFFFFFEE';
-  roundRect(ctx, bx, by, bw, bh, 4);
+  // Bubble background (pixel panel)
+  ctx.fillStyle = '#E7EDF2EE';
+  roundRect(ctx, bx, by, bw, bh, 3);
   ctx.fill();
-  ctx.strokeStyle = '#00000020';
+  ctx.strokeStyle = '#2F3D4728';
   ctx.lineWidth = 1;
-  roundRect(ctx, bx, by, bw, bh, 4);
+  roundRect(ctx, bx, by, bw, bh, 3);
   ctx.stroke();
 
   // Tail
-  ctx.fillStyle = '#FFFFFFEE';
+  ctx.fillStyle = '#E7EDF2EE';
   ctx.beginPath();
   ctx.moveTo(bubble.x - 3, by + bh);
   ctx.lineTo(bubble.x, by + bh + 5);
@@ -205,7 +205,7 @@ export function drawBubble(ctx: CanvasRenderingContext2D, bubble: Bubble): void 
   ctx.fill();
 
   // Text
-  ctx.fillStyle = '#333333';
+  ctx.fillStyle = '#2D3B45';
   ctx.textAlign = 'center';
   ctx.fillText(bubble.text, bubble.x, by + 11);
 

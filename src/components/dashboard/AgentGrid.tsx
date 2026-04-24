@@ -12,9 +12,10 @@ interface AgentGridProps {
   agentStates: Record<string, AgentDashboardState>;
   onChatClick: (agentId: string) => void;
   onRestart?: (agentId: string) => void;
+  onSelectAgent?: (agentId: string) => void;
 }
 
-export default function AgentGrid({ agents, agentStates, onChatClick, onRestart }: AgentGridProps) {
+export default function AgentGrid({ agents, agentStates, onChatClick, onRestart, onSelectAgent }: AgentGridProps) {
   const mainCount = agents.filter((agent) => !agent.isSubagent).length;
   const subCount = agents.filter((agent) => !!agent.isSubagent).length;
 
@@ -55,6 +56,7 @@ export default function AgentGrid({ agents, agentStates, onChatClick, onRestart 
             state={agentStates[agent.id]}
             onChatClick={onChatClick}
             onRestart={onRestart}
+            onSelect={onSelectAgent}
           />
         ))}
       </div>
