@@ -1,0 +1,102 @@
+AGENTIC-OFFICE QUICK HOWTO (MAC)
+===============================
+
+IMPORTANT:
+- Do NOT use sudo with Agentic-Office scripts.
+- Use: ./start.sh and ./stop.sh only.
+
+1) ONE-TIME SETUP
+-----------------
+From project folder:
+
+  pnpm install
+  chmod +x start.sh stop.sh
+
+2) START OPENCLAW (your normal way)
+-----------------------------------
+Example (your command):
+
+  sudo ollama launch openclaw --model qwen3.5:cloud
+
+Wait until OpenClaw is fully up.
+
+3) START AGENTIC-OFFICE (NO SUDO)
+----------------------------------
+
+  ./start.sh
+
+4) OPEN DASHBOARD
+-----------------
+
+  http://127.0.0.1:3000
+
+5) CHECK IF AGENTS ARE COMING
+-----------------------------
+
+  curl http://127.0.0.1:3000/api/v1/health
+  curl http://127.0.0.1:3000/api/v1/agents
+
+If agents endpoint returns JSON with agents, backend is working.
+
+6) STOP PROPERLY
+----------------
+
+  ./stop.sh
+
+If it says a root/sudo process could not be stopped, run the exact sudo kill command shown by stop.sh once.
+Then run ./stop.sh again.
+
+7) IF PORT 3000 IS STILL STUCK
+------------------------------
+
+  lsof -nP -iTCP:3000 -sTCP:LISTEN
+
+If it shows a PID, kill it:
+
+  kill -9 <PID>
+
+If PID belongs to root, use:
+
+  sudo kill -9 <PID>
+
+Then start again:
+
+  ./start.sh
+
+8) ADD TEAM AGENTS (KEVIN, MARK, RONNY, JHON)
+----------------------------------------------
+Run once:
+
+  chmod +x ./scripts/setup-openclaw-agents.sh
+  ./scripts/setup-openclaw-agents.sh
+
+This creates 4 agents with roles:
+- kevin  -> Frontend
+- mark   -> Backend
+- ronny  -> Systems
+- jhon   -> Auditing
+
+Then restart Agentic-Office:
+
+  ./stop.sh
+  ./start.sh
+
+9) TEAM BUILD COMMAND (ALL AGENTS)
+----------------------------------
+Use helper command:
+
+  chmod +x ./scripts/openclaw-build-webapp.sh
+  ./scripts/openclaw-build-webapp.sh "build a web app for hotel booking"
+
+This dispatches work to:
+- kevin (frontend)
+- mark (backend)
+- ronny (systems)
+- jhon (security/audit)
+- main (orchestrator)
+
+10) GOLDEN RULES
+----------------
+- Never run: sudo ./start.sh
+- Always run start/stop as normal user.
+- If UI looks empty, hard refresh browser (Cmd+Shift+R).

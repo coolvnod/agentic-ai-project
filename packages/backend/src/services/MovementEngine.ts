@@ -1,0 +1,717 @@
+import type { AgentStatus } from '@agentic-office/shared';
+import type { BackendWaypoint, BackendWaypointType } from '../data/waypoints.js';
+import { findPath } from './PathfindingService.js';
+import { agenticOfficeConfig } from '../config/agenticOfficeConfig.js';
+import type { AgentStateManager } from './AgentStateManager.js';
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('trace');
+
+const WANDER_DELAY_MIN_MS = 60_000;
+const WANDER_DELAY_MAX_MS = 90_000;
+const WANDER_WEIGHTS: Array<{ type: BackendWaypointType; weight: number }> = [
+  { type: 'desk', weight: 35 },
+  { type: 'reception', weight: 30 },
+  { type: 'restroom', weight: 20 },
+  { type: 'dining', weight: 15 },
+];
+
+const SEATED_TYPES = new Set<BackendWaypointType>(['desk', 'reception', 'restroom', 'conference', 'dining']);
+const TICK_INTERVAL_MS = 50;
+const MOVEMENT_SPEED_TILES_PER_SECOND = 5;
+const PROGRESS_INCREMENT = (TICK_INTERVAL_MS / 1000) * MOVEMENT_SPEED_TILES_PER_SECOND;
+
+const REROUTE_COOLDOWN_MS = 3000;
+const BLOCKED_TIMEOUT_MS = 5000;
+
+export class MovementEngine {
+  private readonly wanderDueAt = new Map<string, number>();
+  private readonly occupiedTiles = new Map<string, string>(); // "x,y" -> agentId
+  private readonly lastRerouteAt = new Map<string, number>();
+  private readonly blockedSince = new Map<string, number>();
+
+  constructor(
+    private readonly walkable: boolean[][],
+    private readonly waypoints: BackendWaypoint[],
+    private readonly noGoTiles: Set<string>,
+    private readonly agentStateManager: AgentStateManager,
+  ) {}
+
+  private setOccupied(agentId: string, x: number, y: number): void {
+    for (const [key, id] of this.occupiedTiles) {
+      if (id === agentId) {
+        this.occupiedTiles.delete(key);
+        break;
+      }
+    }
+    this.occupiedTiles.set(`${x},${y}`, agentId);
+  }
+
+  private clearOccupied(agentId: string): void {
+    for (const [key, id] of this.occupiedTiles) {
+      if (id === agentId) {
+        this.occupiedTiles.delete(key);
+        break;
+      }
+    }
+  }
+
+  private isTileOccupiedByOther(x: number, y: number, agentId: string): boolean {
+    const occupant = this.occupiedTiles.get(`${x},${y}`);
+    return occupant !== undefined && occupant !== agentId;
+  }
+
+  syncOccupancy(): void {
+    this.occupiedTiles.clear();
+    for (const agent of this.agentStateManager.getMutableAgents()) {
+      if (agent.movement?.status !== 'moving') {
+        this.occupiedTiles.set(`${agent.position.x},${agent.position.y}`, agent.id);
+      }
+    }
+  }
+
+  handleStatusChange(agentId: string, newStatus: AgentStatus, previousStatus: AgentStatus): void {
+    if (newStatus === previousStatus) {
+      return;
+    }
+
+    if (newStatus === 'busy') {
+      return;
+    }
+
+    if (newStatus === 'offline') {
+      this.cancelMovement(agentId, true);
+      return;
+    }
+
+    if (newStatus === 'conference') {
+      return;
+    }
+
+    if (newStatus === 'working') {
+      const agent = this.agentStateManager.getMutableAgent(agentId);
+      const currentWaypoint = agent?.movement?.claimedWaypointId
+        ? this.agentStateManager.findWaypointById(agent.movement.claimedWaypointId)
+        : null;
+      if (currentWaypoint?.type === 'desk' && agent?.movement?.status === 'seated') {
+        return;
+      }
+      const reserved = this.findReservedWaypoint(agentId);
+      if (reserved) {
+        if (!this.routeAgentToWaypoint(agentId, reserved)) {
+          this.routeToCategory(agentId, 'desk');
+        }
+      } else {
+        this.routeToCategory(agentId, 'desk');
+      }
+      return;
+    }
+
+    if (newStatus === 'online') {
+      const agent = this.agentStateManager.getMutableAgent(agentId);
+      const seatedWaypoint = agent?.movement?.claimedWaypointId
+        ? this.agentStateManager.findWaypointById(agent.movement.claimedWaypointId)
+        : null;
+      if (seatedWaypoint && agent?.movement?.status === 'seated') {
+        return;
+      }
+      const reserved = this.findReservedWaypoint(agentId);
+      if (reserved) {
+        if (!this.routeAgentToWaypoint(agentId, reserved)) {
+          this.routeToCategory(agentId, 'desk');
+        }
+      } else {
+        this.routeToCategory(agentId, 'desk');
+      }
+      return;
+    }
+
+    if (newStatus === 'idle') {
+      this.scheduleWander(agentId);
+    }
+  }
+
+  handleConference(agentIds: string[]): void {
+    logger.info({ agentIds }, '[MovementEngine] handleConference fired');
+
+    const rowSlots = [1, 2, 3, 4, 5];
+    for (let i = rowSlots.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rowSlots[i], rowSlots[j]] = [rowSlots[j], rowSlots[i]];
+    }
+    const seatOrder: string[] = [];
+    for (const row of rowSlots) {
+      seatOrder.push(`conf-left-${row}`);
+      seatOrder.push(`conf-right-${row}`);
+    }
+    seatOrder.push('conf-head-n');
+    seatOrder.push('conf-head-s');
+
+    const slotAssign: Map<string, string> = new Map();
+    for (let i = 0; i < agentIds.length && i < seatOrder.length; i++) {
+      slotAssign.set(agentIds[i], seatOrder[i]);
+    }
+
+    for (let i = 0; i < agentIds.length; i++) {
+      const agentId = agentIds[i];
+      const agent = this.agentStateManager.getMutableAgent(agentId);
+      const previousClaim = agent?.movement?.claimedWaypointId ?? null;
+      this.cancelMovement(agentId, false);
+      if (previousClaim) {
+        this.agentStateManager.releaseWaypointClaim(previousClaim, agentId);
+      }
+      let candidates = this.waypoints.filter((waypoint) => waypoint.type === 'conference');
+
+      const assignedSlot = slotAssign.get(agentId);
+      if (assignedSlot) {
+        candidates = candidates.filter(wp => wp.id === assignedSlot);
+      }
+
+      const targetedIds = this.collectTargetedWaypointIds();
+      const waypoint = this.pickWaypoint(candidates, agentId, targetedIds);
+      let routed = false;
+      if (agent && waypoint) {
+        const sameTile = agent.position.x === waypoint.x && agent.position.y === waypoint.y;
+        logger.info({
+          agentId,
+          currentPosition: { x: agent.position.x, y: agent.position.y },
+          targetWaypoint: waypoint.id,
+          targetPosition: { x: waypoint.x, y: waypoint.y },
+          sameTile,
+        }, '[MovementEngine] conference same-tile check');
+        const path = findPath(
+          { x: agent.position.x, y: agent.position.y },
+          { x: waypoint.x, y: waypoint.y },
+          this.walkable,
+          this.noGoTiles,
+        );
+        logger.info({
+          agentId,
+          startPosition: { x: agent.position.x, y: agent.position.y },
+          targetWaypoint: waypoint.id,
+          targetPosition: { x: waypoint.x, y: waypoint.y },
+          pathLength: Array.isArray(path) ? path.length : null,
+          pathPreview: Array.isArray(path) ? path.slice(0, 6) : null,
+        }, '[MovementEngine] conference pathfinding result');
+        if (sameTile) {
+          this.agentStateManager.claimWaypoint(waypoint, agentId);
+          agent.movement = {
+            status: 'seated',
+            claimedWaypointId: waypoint.id,
+            destination: { x: waypoint.x, y: waypoint.y },
+            path: [],
+            lastUpdatedAt: new Date().toISOString(),
+            progress: 0,
+            fractionalX: undefined,
+            fractionalY: undefined,
+            visualOffsetX: waypoint.visualOffsetX,
+            visualOffsetY: waypoint.visualOffsetY,
+            waypointType: waypoint.type,
+            waypointDirection: waypoint.direction,
+          };
+          this.agentStateManager.emitMovement(agent);
+          logger.info({ agentId, branch: 'sameTile->seated' }, '[MovementEngine] conference branch');
+          routed = true;
+        } else if (path.length > 0) {
+          this.cancelMovement(agentId, true);
+          this.agentStateManager.claimWaypoint(waypoint, agentId);
+          this.agentStateManager.applyMovement(agent, path.slice(1), waypoint, { x: waypoint.x, y: waypoint.y });
+          this.wanderDueAt.delete(agentId);
+          logger.info({ agentId, branch: 'pathFound->moving', emittedPathLength: path.slice(1).length }, '[MovementEngine] conference branch');
+          routed = true;
+        } else {
+          logger.info({ agentId, branch: 'noPath->unrouted' }, '[MovementEngine] conference branch');
+        }
+      }
+      const updated = this.agentStateManager.getMutableAgent(agentId);
+      logger.info({
+        agentId,
+        previousClaim,
+        routed,
+        claimedWaypointId: updated?.movement?.claimedWaypointId ?? null,
+        destination: updated?.movement?.destination ?? null,
+        movementStatus: updated?.movement?.status ?? null,
+      }, '[MovementEngine] conference routing result');
+    }
+  }
+
+  wanderTick(): void {
+    const now = Date.now();
+    this.syncOccupancy();
+    this.validatePositions();
+    for (const agent of this.agentStateManager.getMutableAgents()) {
+      if (agent.status !== 'idle') {
+        continue;
+      }
+      const dueAt = this.wanderDueAt.get(agent.id);
+      if (!dueAt || dueAt > now) {
+        continue;
+      }
+      this.wanderDueAt.delete(agent.id);
+      this.routeIdleAgent(agent.id);
+    }
+  }
+
+  movementTick(): void {
+    this.wanderTick();
+
+
+    if (Math.random() < 0.001) {
+      this.periodicCleanup();
+    }
+    for (const agent of this.agentStateManager.getMutableAgents()) {
+      const movement = agent.movement;
+      if (!movement) {
+        continue;
+      }
+
+      if (movement.path.length === 0 && movement.status === 'moving') {
+        logger.info({ agentId: agent.id, position: agent.position, claimedWaypointId: movement.claimedWaypointId, destination: movement.destination }, '[stuck-recovery] agent stuck in moving with empty path — auto-recovering');
+        const recoverStatus = movement.claimedWaypointId ? 'seated' : 'idle';
+        if (movement.claimedWaypointId) {
+          this.setOccupied(agent.id, agent.position.x, agent.position.y);
+        }
+        agent.movement = {
+          ...movement,
+          status: recoverStatus,
+          path: [],
+          progress: 0,
+          fractionalX: undefined,
+          fractionalY: undefined,
+          lastUpdatedAt: new Date().toISOString(),
+        };
+        this.agentStateManager.emitMovement(agent);
+        if (recoverStatus === 'idle') {
+          this.scheduleWander(agent.id);
+        }
+        continue;
+      }
+
+      if (movement.path.length === 0) {
+        continue;
+      }
+
+      const waypoint = movement.claimedWaypointId ? this.agentStateManager.findWaypointById(movement.claimedWaypointId) : null;
+      let progress = (movement.progress ?? 0) + PROGRESS_INCREMENT;
+      let path = [...movement.path];
+      let currentPosition = { ...agent.position };
+
+      if (path.length > 0) {
+        const firstStep = path[0];
+        const dist = Math.abs(currentPosition.x - firstStep.x) + Math.abs(currentPosition.y - firstStep.y);
+        const destination = movement.destination;
+        const distToDestination = destination
+          ? Math.abs(currentPosition.x - destination.x) + Math.abs(currentPosition.y - destination.y)
+          : 0;
+        if (dist > 2 && (!destination || distToDestination > 2)) {
+          logger.info({ agentId: agent.id, position: currentPosition, firstStep, dist, destination, distToDestination, pathLen: path.length }, '[stale-path-guard] cancelling movement — agent too far from path start');
+          this.clearOccupied(agent.id);
+          if (movement.claimedWaypointId) {
+            this.agentStateManager.releaseWaypointClaim(movement.claimedWaypointId, agent.id);
+          }
+          agent.movement = {
+            ...movement,
+            status: 'idle',
+            path: [],
+            progress: 0,
+            fractionalX: undefined,
+            fractionalY: undefined,
+            lastUpdatedAt: new Date().toISOString(),
+          };
+          this.agentStateManager.emitMovement(agent);
+          if (agent.status === 'conference') {
+            this.handleConference([agent.id]);
+          }
+          continue;
+        }
+      }
+
+      while (progress >= 1 && path.length > 0) {
+        const [nextStep, ...remainingPath] = path;
+        const direction = this.agentStateManager.directionFromStep(currentPosition, nextStep);
+        currentPosition = {
+          x: nextStep.x,
+          y: nextStep.y,
+          direction,
+        };
+        path = remainingPath;
+        progress -= 1;
+      }
+
+      const nextStep = path[0];
+      const arrived = path.length === 0;
+
+      if (!arrived) {
+        this.clearOccupied(agent.id);
+      }
+
+      if (!arrived && nextStep && this.isTileOccupiedByOther(nextStep.x, nextStep.y, agent.id)) {
+        const now = Date.now();
+        const lastReroute = this.lastRerouteAt.get(agent.id) ?? 0;
+        const blockStart = this.blockedSince.get(agent.id) ?? now;
+
+        if (!this.blockedSince.has(agent.id)) {
+          this.blockedSince.set(agent.id, now);
+        }
+
+        if (now - blockStart > BLOCKED_TIMEOUT_MS) {
+          this.blockedSince.delete(agent.id);
+          this.lastRerouteAt.delete(agent.id);
+          agent.position = currentPosition;
+          this.cancelMovement(agent.id, true);
+          if (agent.status === 'conference') {
+            this.handleConference([agent.id]);
+          }
+          continue;
+        }
+
+        if (now - lastReroute >= REROUTE_COOLDOWN_MS && movement.destination) {
+          this.lastRerouteAt.set(agent.id, now);
+
+          const dynamicNoGo = new Set(this.noGoTiles);
+          dynamicNoGo.add(`${nextStep.x},${nextStep.y}`);
+
+          const newPath = findPath(
+            currentPosition,
+            movement.destination,
+            this.walkable,
+            dynamicNoGo,
+          );
+
+          if (newPath.length > 1) {
+            this.blockedSince.delete(agent.id);
+            agent.position = currentPosition;
+            const newPathWithoutCurrent = newPath.slice(1);
+            agent.movement = {
+              ...movement,
+              path: newPathWithoutCurrent,
+              progress: 0,
+              fractionalX: undefined,
+              fractionalY: undefined,
+              lastUpdatedAt: new Date().toISOString(),
+            };
+            this.agentStateManager.emitMovement(agent);
+            continue;
+          }
+        }
+
+        agent.position = currentPosition;
+        agent.movement = {
+          ...movement,
+          progress: 0,
+          lastUpdatedAt: new Date().toISOString(),
+        };
+        this.agentStateManager.emitMovement(agent);
+        continue;
+      } else {
+        this.blockedSince.delete(agent.id);
+      }
+
+      agent.position = currentPosition;
+
+      if (!arrived && nextStep) {
+        agent.position.direction = this.agentStateManager.directionFromStep(agent.position, nextStep);
+      }
+
+      if (arrived && waypoint) {
+        agent.position.direction = waypoint.direction;
+      }
+
+      agent.movement = {
+        ...movement,
+        status: arrived && waypoint && SEATED_TYPES.has(waypoint.type) ? 'seated' : arrived ? 'idle' : 'moving',
+        path,
+        progress: arrived ? 0 : progress,
+        fractionalX: arrived || !nextStep ? undefined : agent.position.x + (nextStep.x - agent.position.x) * progress,
+        fractionalY: arrived || !nextStep ? undefined : agent.position.y + (nextStep.y - agent.position.y) * progress,
+        lastUpdatedAt: new Date().toISOString(),
+        visualOffsetX: waypoint?.visualOffsetX,
+        visualOffsetY: waypoint?.visualOffsetY,
+        waypointType: waypoint?.type,
+        waypointDirection: arrived ? waypoint?.direction : undefined,
+      };
+
+      this.agentStateManager.emitMovement(agent);
+
+      if (arrived) {
+        this.setOccupied(agent.id, agent.position.x, agent.position.y);
+
+        if (agent.status === 'idle') {
+          this.scheduleWander(agent.id);
+        }
+      }
+    }
+  }
+
+  private findReservedWaypoint(agentId: string): BackendWaypoint | null {
+    const waypointId = agenticOfficeConfig.getReservedWaypoint(agentId);
+    if (!waypointId) return null;
+    return this.waypoints.find((wp) => wp.id === waypointId) ?? null;
+  }
+
+  requestReturnToWaypoint(agentId: string, waypointId: string): boolean {
+    const waypoint = this.agentStateManager.findWaypointById(waypointId);
+    if (!waypoint) {
+      return false;
+    }
+    return this.routeAgentToWaypoint(agentId, waypoint);
+  }
+
+  requestMove(agentId: string, waypointId?: string, destination?: { x: number; y: number }) {
+    const targetWaypoint = waypointId ? this.agentStateManager.findWaypointById(waypointId) : null;
+    if (targetWaypoint) {
+      const ok = this.routeAgentToWaypoint(agentId, targetWaypoint);
+      if (!ok) {
+        throw new Error(`no backend path available from current position to waypoint ${targetWaypoint.id}`);
+      }
+      return;
+    }
+
+    if (!destination) {
+      throw new Error('destination or waypointId is required');
+    }
+
+    const agent = this.agentStateManager.getMutableAgent(agentId);
+    if (!agent) {
+      throw new Error(`agent ${agentId} not found`);
+    }
+    if (!this.walkable[destination.y]?.[destination.x]) {
+      throw new Error(`destination ${destination.x},${destination.y} is not walkable`);
+    }
+
+    const path = findPath({ x: agent.position.x, y: agent.position.y }, destination, this.walkable, this.noGoTiles);
+    if ((agent.position.x !== destination.x || agent.position.y !== destination.y) && path.length === 0) {
+      throw new Error(`no backend path available from ${agent.position.x},${agent.position.y} to ${destination.x},${destination.y}`);
+    }
+
+    this.cancelMovement(agentId, true);
+    this.agentStateManager.applyMovement(agent, path.slice(1), null, destination);
+  }
+
+  private routeIdleAgent(agentId: string): void {
+    const agent = this.agentStateManager.getMutableAgent(agentId);
+    if (!agent) {
+      return;
+    }
+    if (agent.movement?.claimedWaypointId) {
+      this.agentStateManager.releaseWaypointClaim(agent.movement.claimedWaypointId, agentId);
+    }
+
+    const choice = this.pickWeightedCategory();
+    const routed = this.routeToCategory(agentId, choice);
+    if (!routed) {
+      const otherCategories = WANDER_WEIGHTS.filter(w => w.type !== choice).map(w => w.type);
+      for (const fallback of otherCategories) {
+        if (this.routeToCategory(agentId, fallback)) {
+          return;
+        }
+      }
+      this.scheduleWander(agentId);
+    }
+  }
+
+  private routeToCategory(agentId: string, type: BackendWaypointType): boolean {
+    const candidates = this.waypoints.filter((waypoint) => waypoint.type === type);
+    const targetedIds = this.collectTargetedWaypointIds();
+    const waypoint = this.pickWaypoint(candidates, agentId, targetedIds);
+    if (!waypoint) {
+      return false;
+    }
+    return this.routeAgentToWaypoint(agentId, waypoint);
+  }
+
+  private routeAgentToWaypoint(agentId: string, waypoint: BackendWaypoint): boolean {
+    const agent = this.agentStateManager.getMutableAgent(agentId);
+    if (!agent) {
+      return false;
+    }
+
+    if (waypoint.claimedBy && waypoint.claimedBy !== agentId) {
+      return false;
+    }
+
+    const path = findPath(
+      { x: agent.position.x, y: agent.position.y },
+      { x: waypoint.x, y: waypoint.y },
+      this.walkable,
+      this.noGoTiles,
+    );
+
+    if ((agent.position.x !== waypoint.x || agent.position.y !== waypoint.y) && path.length === 0) {
+      return false;
+    }
+
+    this.cancelMovement(agentId, true);
+    this.agentStateManager.claimWaypoint(waypoint, agentId);
+    this.agentStateManager.applyMovement(agent, path.slice(1), waypoint, { x: waypoint.x, y: waypoint.y });
+    this.wanderDueAt.delete(agentId);
+    return true;
+  }
+
+  private cancelMovement(agentId: string, releaseWaypoint: boolean): void {
+    this.wanderDueAt.delete(agentId);
+    this.blockedSince.delete(agentId);
+    this.lastRerouteAt.delete(agentId);
+    const agent = this.agentStateManager.getMutableAgent(agentId);
+    if (!agent?.movement) {
+      return;
+    }
+
+    if (releaseWaypoint && agent.movement.claimedWaypointId) {
+      this.agentStateManager.releaseWaypointClaim(agent.movement.claimedWaypointId, agentId);
+    }
+
+    if (agent.movement.status === 'moving') {
+      this.setOccupied(agentId, agent.position.x, agent.position.y);
+    }
+
+    agent.movement = {
+      ...agent.movement,
+      status: 'idle',
+      claimedWaypointId: releaseWaypoint ? null : agent.movement.claimedWaypointId,
+      destination: null,
+      path: [],
+      progress: 0,
+      fractionalX: undefined,
+      fractionalY: undefined,
+      lastUpdatedAt: new Date().toISOString(),
+      visualOffsetX: undefined,
+      visualOffsetY: undefined,
+      waypointType: undefined,
+      waypointDirection: undefined,
+    };
+    this.agentStateManager.emitMovement(agent);
+  }
+
+  removeAgent(agentId: string): void {
+    this.cancelMovement(agentId, true);
+    this.wanderDueAt.delete(agentId);
+    this.lastRerouteAt.delete(agentId);
+    this.blockedSince.delete(agentId);
+    this.clearOccupied(agentId);
+  }
+
+  private periodicCleanup(): void {
+    const liveIds = new Set(this.agentStateManager.getMutableAgents().map(a => a.id));
+    for (const id of this.wanderDueAt.keys()) if (!liveIds.has(id)) this.wanderDueAt.delete(id);
+    for (const id of this.lastRerouteAt.keys()) if (!liveIds.has(id)) this.lastRerouteAt.delete(id);
+    for (const id of this.blockedSince.keys()) if (!liveIds.has(id)) this.blockedSince.delete(id);
+    for (const [key, id] of this.occupiedTiles) if (!liveIds.has(id)) this.occupiedTiles.delete(key);
+  }
+
+  scheduleWander(agentId: string): void {
+    const delay = WANDER_DELAY_MIN_MS + Math.floor(Math.random() * (WANDER_DELAY_MAX_MS - WANDER_DELAY_MIN_MS + 1));
+    this.wanderDueAt.set(agentId, Date.now() + delay);
+  }
+
+  private validatePositions(): void {
+    for (const agent of this.agentStateManager.getMutableAgents()) {
+      if (agent.movement?.status === 'moving' && (agent.movement?.path?.length ?? 0) > 0) {
+        continue;
+      }
+      if (agent.movement?.status === 'seated' || agent.movement?.claimedWaypointId) {
+        continue;
+      }
+
+      const { x, y } = agent.position;
+      if (x >= 0 && y >= 0 && this.walkable[y]?.[x]) {
+        continue; // Position is valid
+      }
+
+      const nearest = this.findNearestWalkable(x, y);
+      if (nearest) {
+        logger.info({ agentId: agent.id, from: { x, y }, to: nearest, status: agent.movement?.status }, '[validatePositions] snapped agent to nearest walkable tile');
+        agent.position.x = nearest.x;
+        agent.position.y = nearest.y;
+        this.agentStateManager.emitMovement(agent);
+      }
+    }
+  }
+
+  private findNearestWalkable(startX: number, startY: number): { x: number; y: number } | null {
+    const visited = new Set<string>();
+    const queue: Array<{ x: number; y: number }> = [{ x: startX, y: startY }];
+    visited.add(`${startX},${startY}`);
+    const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      for (const [dx, dy] of dirs) {
+        const nx = current.x + dx;
+        const ny = current.y + dy;
+        if (nx < 0 || ny < 0 || ny >= this.walkable.length || nx >= (this.walkable[0]?.length ?? 0)) {
+          continue;
+        }
+        const key = `${nx},${ny}`;
+        if (visited.has(key)) {
+          continue;
+        }
+        visited.add(key);
+        if (this.walkable[ny][nx]) {
+          return { x: nx, y: ny };
+        }
+        queue.push({ x: nx, y: ny });
+      }
+    }
+    return null;
+  }
+
+  private collectTargetedWaypointIds(): Set<string> {
+    const targeted = new Set<string>();
+    for (const agent of this.agentStateManager.getMutableAgents()) {
+      if (agent.movement?.claimedWaypointId && (agent.movement.status === 'moving' || agent.movement.status === 'seated')) {
+        targeted.add(agent.movement.claimedWaypointId);
+      }
+    }
+    return targeted;
+  }
+
+  private pickWaypoint(candidates: BackendWaypoint[], agentId: string, excludeIds: Set<string>): BackendWaypoint | null {
+    const agent = this.agentStateManager.getMutableAgent(agentId);
+    if (!agent) {
+      return null;
+    }
+
+    const available = candidates.filter((waypoint) => {
+      if (waypoint.reservedFor && waypoint.reservedFor !== agentId) {
+        return false;
+      }
+      if (excludeIds.has(waypoint.id)) {
+        return false;
+      }
+      if (!waypoint.claimedBy || waypoint.claimedBy === agentId) {
+        return true;
+      }
+      return false;
+    });
+
+    if (available.length === 0) {
+      return null;
+    }
+
+    const sorted = [...available].sort((left, right) => {
+      const leftDistance = Math.abs(left.x - agent.position.x) + Math.abs(left.y - agent.position.y);
+      const rightDistance = Math.abs(right.x - agent.position.x) + Math.abs(right.y - agent.position.y);
+      return leftDistance - rightDistance;
+    });
+
+    const unoccupied = sorted.filter(wp => !this.isTileOccupiedByOther(wp.x, wp.y, agentId));
+    const pool = unoccupied.length > 0 ? unoccupied : sorted;
+    const top = pool.slice(0, Math.min(pool.length, 5));
+    return top[Math.floor(Math.random() * top.length)] ?? null;
+  }
+
+  private pickWeightedCategory(): BackendWaypointType {
+    const total = WANDER_WEIGHTS.reduce((sum, entry) => sum + entry.weight, 0);
+    let roll = Math.random() * total;
+
+    for (const entry of WANDER_WEIGHTS) {
+      roll -= entry.weight;
+      if (roll <= 0) {
+        return entry.type;
+      }
+    }
+
+    return 'desk';
+  }
+}

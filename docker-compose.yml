@@ -1,0 +1,23 @@
+services:
+  agentic-office:
+    build: .
+    network_mode: host
+    volumes:
+      - ./assets:/app/assets:ro
+      - ./.env:/app/.env:ro
+      - ~/.openclaw/openclaw.json:/root/.openclaw/openclaw.json:ro
+      - ~/.openclaw/agentic-office:/root/.openclaw/agentic-office:ro
+    environment:
+      - NODE_ENV=production
+      - AGENTIC_OFFICE_HOST=0.0.0.0
+      - AGENTIC_OFFICE_PORT=${AGENTIC_OFFICE_PORT:-5555}
+      - AGENTIC_OFFICE_GATEWAY_URL=${AGENTIC_OFFICE_GATEWAY_URL:-ws://127.0.0.1:18789}
+      - AGENTIC_OFFICE_OPENCLAW_CONFIG=/root/.openclaw/openclaw.json
+      - AGENTIC_OFFICE_OFFICE_LAYOUT_PATH=/app/assets/office-layout.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:${AGENTIC_OFFICE_PORT:-5555}/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3

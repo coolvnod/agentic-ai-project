@@ -1,0 +1,176 @@
+import type { FastifyInstance } from 'fastify';
+import type { WebSocket } from 'ws';
+import type {
+  Agent,
+  AgentConfig,
+  AgentLog,
+  AgentTask,
+  Appearance,
+  AppearancePatch,
+  MoveAgentRequest,
+  FrontendEventName,
+  FrontendEventPayload,
+  Tilemap,
+  WsRequestMessage,
+  WsResponseMessage,
+} from '@agentic-office/shared';
+
+export interface BackendConfig {
+  host: string;
+  port: number;
+  logLevel: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
+  gatewayUrl: string;
+  gatewayToken?: string;
+  openClawConfigPath: string;
+  appearancesPath: string;
+  officeLayoutPath: string;
+}
+
+export interface OpenClawAgentEntry {
+  id: string;
+  name?: string;
+  model?: string | { primary?: string };
+  workspace?: string;
+  agentDir?: string;
+}
+
+export interface OpenClawBinding {
+  agentId?: string;
+  match?: {
+    channel?: string;
+    accountId?: string;
+  };
+}
+
+export interface OpenClawConfig {
+  agents?: {
+    defaults?: {
+      model?: string | { primary?: string };
+      workspace?: string;
+    };
+    list?: OpenClawAgentEntry[];
+  };
+  bindings?: OpenClawBinding[];
+  gateway?: {
+    port?: number;
+    auth?: {
+      token?: string;
+    };
+  };
+}
+
+export interface ConfigAgentSnapshot {
+  id: string;
+  name: string;
+  config: AgentConfig;
+  soul?: string;
+  identity?: Agent['identity'];
+}
+
+export interface GatewayEnvelope {
+  type: 'auth_challenge' | 'auth_response' | 'auth_success' | 'req' | 'res' | 'event';
+  id?: string;
+  method?: string;
+  params?: Record<string, unknown>;
+  event?: string;
+  payload?: unknown;
+  ok?: boolean;
+  error?: string;
+  nonce?: string;
+  timestamp?: string;
+  sessionId?: string;
+}
+
+export interface GatewayStatusEvent {
+  agentId: string;
+  status: Agent['status'];
+  timestamp: string;
+  source?: 'gateway' | 'presence_snapshot' | 'health_snapshot';
+}
+
+export interface GatewayLogEvent {
+  agentId: string;
+  log: AgentLog;
+}
+
+export interface GatewayTaskEvent {
+  agentId: string;
+  task: AgentTask;
+}
+
+export interface GatewayConferenceEvent {
+  agentIds: string[];
+  sessionKey?: string;
+  source?: 'session_send' | 'shared_session' | 'sessions_spawn' | 'group_exchange';
+  timestamp: string;
+}
+
+export interface AgentStateSubscriber {
+  (event: { event: FrontendEventName; payload: FrontendEventPayload }): void;
+}
+
+export interface ActiveMeeting {
+  id: string;
+  agentIds: Set<string>;
+  sessionKey: string;
+  startedAt: number;
+  lastActivityAt: number;
+  source: 'session_send' | 'sessions_spawn' | 'group_exchange';
+  previousWaypointByAgent: Map<string, string | null>;
+}
+
+export interface ActiveMeetingSnapshot {
+  id: string;
+  agentIds: string[];
+  sessionKey: string;
+  startedAt: string;
+  lastActivityAt: string;
+  source: ActiveMeeting['source'];
+}
+
+export interface ClientContext {
+  clientId: string;
+  socket: WebSocket;
+}
+
+export interface WsHandlerContext {
+  agentStateManager: AgentStateManagerLike;
+  officeLayout: Tilemap;
+}
+
+export interface AgentStateManagerLike {
+  getAgents(): Agent[];
+  getAgent(id: string): Agent | undefined;
+  getLogs(id: string, options?: { limit?: number; offset?: number; level?: AgentLog['level'] }): {
+    logs: AgentLog[];
+    total: number;
+    hasMore: boolean;
+  };
+  getTasks(id: string): AgentTask[];
+  recordActivity(id: string, timestamp?: number): void;
+  upsertAppearance(id: string, patch: AppearancePatch): Promise<Appearance>;
+  setDisplayName(id: string, name: string | null): Promise<string | null>;
+  requestMove(request: MoveAgentRequest): { ok: true; agent: Agent };
+  getActiveMeetings(): ActiveMeetingSnapshot[];
+}
+
+export interface AgenticOfficeServices {
+  config: BackendConfig;
+  agentStateManager: AgentStateManagerLike;
+  officeLayout: Tilemap;
+  gatewayClient: import('../services/GatewayClient.js').GatewayClient;
+}
+
+export interface AgenticOfficeFastifyInstance extends FastifyInstance {
+  agenticOffice: AgenticOfficeServices;
+}
+
+export interface AppearanceStoreRecord {
+  updatedAt: string;
+  appearance: Appearance;
+  appearanceSaved?: boolean;
+  displayName?: string | null;
+}
+
+export type WsHandlerResult = WsResponseMessage;
+export type WsRequest = WsRequestMessage;
