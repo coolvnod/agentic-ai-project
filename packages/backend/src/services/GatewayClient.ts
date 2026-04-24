@@ -124,35 +124,43 @@ export class GatewayClient {
   }
 
   public async sendSessionMessage(agentId: string, text: string): Promise<void> {
-    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      throw new Error('Gateway disconnected');
+    logger.info({ agentId, text: text.slice(0, 50) }, 'Sending message via CLI');
+    const { exec } = await import('node:child_process');
+    const { promisify } = await import('node:util');
+    const execAsync = promisify(exec);
+    try {
+      await execAsync(`openclaw agent --agent ${agentId} --message ${JSON.stringify(text)} --timeout 600`);
+    } catch (error) {
+      logger.error({ agentId, err: error }, 'Failed to send message via CLI');
+      throw error;
     }
-    const sessionKey = this.agentSessionKeys.get(agentId) || `agent:${agentId}`;
-    this.send({
-      type: 'req',
-      id: this.nextRequestId(),
-      method: 'sessions.messages.send',
-      params: {
-        sessionKey,
-        message: { role: 'user', text }
-      }
-    });
   }
 
   public async assignTask(agentId: string, description: string): Promise<void> {
-    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      throw new Error('Gateway disconnected');
+    logger.info({ agentId, description: description.slice(0, 50) }, 'Assigning task via CLI');
+    const { exec } = await import('node:child_process');
+    const { promisify } = await import('node:util');
+    const execAsync = promisify(exec);
+    try {
+      await execAsync(`openclaw agent --agent ${agentId} --message ${JSON.stringify(`[SYSTEM: Task Assignment]\n${description}`)} --timeout 600`);
+    } catch (error) {
+      logger.error({ agentId, err: error }, 'Failed to assign task via CLI');
+      throw error;
     }
-    const sessionKey = this.agentSessionKeys.get(agentId) || `agent:${agentId}`;
-    this.send({
-      type: 'req',
-      id: this.nextRequestId(),
-      method: 'sessions.messages.send',
-      params: {
-        sessionKey,
-        message: { role: 'user', text: `[SYSTEM: Task Assignment]\n${description}` }
-      }
-    });
+  }
+
+  private async wakeUpAgents(): Promise<void> {
+    const agents = ['main', 'kevin', 'mark', 'ronny', 'jhon', 'docclaw'];
+    logger.info('Waking up agents on boot...');
+    const { exec } = await import('node:child_process');
+    const { promisify } = await import('node:util');
+    const execAsync = promisify(exec);
+
+    for (const agentId of agents) {
+      execAsync(`openclaw agent --agent ${agentId} --message "[SYSTEM: Init connection. Respond with 'Online']" --timeout 30`)
+        .then(() => logger.info({ agentId }, 'Agent woke up successfully'))
+        .catch((err) => logger.warn({ agentId, err: err.message }, 'Agent wake up warning'));
+    }
   }
 
   private connect(): void {
@@ -272,7 +280,7 @@ export class GatewayClient {
           nonce: challengeNonce,
         },
         role: 'operator',
-        scopes: ['operator.read', 'operator.admin'],
+        scopes: scopes,
         client: {
           id: 'gateway-client',
           displayName: 'Agentic-Office',
@@ -305,6 +313,7 @@ export class GatewayClient {
       this.subscribeToEvents();
       this.subscribedSessionKeys.clear();
       this.requestAgentList();
+      this.wakeUpAgents().catch((err) => logger.error({ err }, 'Failed to wake up agents'));
       return;
     }
 

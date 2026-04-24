@@ -14,6 +14,7 @@ import { uiStore, useUIStore } from '@/store/uiStore';
 import { NavigationSwitch, type ViewMode } from '@/components/staff/NavigationSwitch';
 import { StaffView } from '@/components/staff/StaffView';
 import { TasksView } from '@/components/tasks/TasksView';
+import { SystemView } from '@/components/system/SystemView';
 import type { AgentPosition } from '@/types';
 import type { Appearance } from '@agentic-office/shared';
 
@@ -146,6 +147,8 @@ export const AppLayout = ({
           <StaffView />
         ) : viewMode === 'tasks' ? (
           <TasksView />
+        ) : viewMode === 'system' ? (
+          <SystemView />
         ) : (
         <section className="grid gap-6 xl:grid-cols-[1fr_320px]">
           <div className="relative h-[70vh]">

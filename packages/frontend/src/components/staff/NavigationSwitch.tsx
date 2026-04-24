@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 
-export type ViewMode = 'office' | 'staff' | 'tasks';
+export type ViewMode = 'office' | 'staff' | 'tasks' | 'system';
 
 interface NavigationSwitchProps {
   value: ViewMode;
@@ -14,7 +14,7 @@ export function NavigationSwitch({ value, onChange }: NavigationSwitchProps) {
         type="button"
         onClick={() => onChange('office')}
         className={cn(
-          'relative min-w-[132px] px-4 py-3 text-[10px] uppercase tracking-[0.24em] transition-all duration-200 font-display',
+          'relative min-w-[110px] px-3 py-3 text-[10px] uppercase tracking-[0.24em] transition-all duration-200 font-display',
           value === 'office'
             ? 'bg-[linear-gradient(180deg,rgba(209,164,90,0.24),rgba(76,55,27,0.5))] text-[#f0d6a5] before:absolute before:inset-x-2 before:bottom-1 before:h-[2px] before:bg-[#00d4aa] before:content-[""] after:absolute after:left-1 after:top-1 after:text-[8px] after:text-[#00d4aa] after:content-[">"]'
             : 'text-[#9c907f] hover:text-[#b7aa96]'
@@ -27,7 +27,7 @@ export function NavigationSwitch({ value, onChange }: NavigationSwitchProps) {
         type="button"
         onClick={() => onChange('staff')}
         className={cn(
-          'relative min-w-[132px] px-4 py-3 text-[10px] uppercase tracking-[0.24em] transition-all duration-200 font-display',
+          'relative min-w-[110px] px-3 py-3 text-[10px] uppercase tracking-[0.24em] transition-all duration-200 font-display',
           value === 'staff'
             ? 'bg-[linear-gradient(180deg,rgba(209,164,90,0.24),rgba(76,55,27,0.5))] text-[#f0d6a5] before:absolute before:inset-x-2 before:bottom-1 before:h-[2px] before:bg-[#00d4aa] before:content-[""] after:absolute after:left-1 after:top-1 after:text-[8px] after:text-[#00d4aa] after:content-[">"]'
             : 'text-[#9c907f] hover:text-[#b7aa96]'
@@ -40,13 +40,26 @@ export function NavigationSwitch({ value, onChange }: NavigationSwitchProps) {
         type="button"
         onClick={() => onChange('tasks')}
         className={cn(
-          'relative min-w-[132px] px-4 py-3 text-[10px] uppercase tracking-[0.24em] transition-all duration-200 font-display',
+          'relative min-w-[110px] px-3 py-3 text-[10px] uppercase tracking-[0.24em] transition-all duration-200 font-display',
           value === 'tasks'
             ? 'bg-[linear-gradient(180deg,rgba(209,164,90,0.24),rgba(76,55,27,0.5))] text-[#f0d6a5] before:absolute before:inset-x-2 before:bottom-1 before:h-[2px] before:bg-[#00d4aa] before:content-[""] after:absolute after:left-1 after:top-1 after:text-[8px] after:text-[#00d4aa] after:content-[">"]'
             : 'text-[#9c907f] hover:text-[#b7aa96]'
         )}
       >
         📋 Tasks
+      </button>
+      <div className="w-px bg-[#d1a45a]/15" />
+      <button
+        type="button"
+        onClick={() => onChange('system')}
+        className={cn(
+          'relative min-w-[110px] px-3 py-3 text-[10px] uppercase tracking-[0.24em] transition-all duration-200 font-display',
+          value === 'system'
+            ? 'bg-[linear-gradient(180deg,rgba(209,164,90,0.24),rgba(76,55,27,0.5))] text-[#f0d6a5] before:absolute before:inset-x-2 before:bottom-1 before:h-[2px] before:bg-[#00d4aa] before:content-[""] after:absolute after:left-1 after:top-1 after:text-[8px] after:text-[#00d4aa] after:content-[">"]'
+            : 'text-[#9c907f] hover:text-[#b7aa96]'
+        )}
+      >
+        ⚙️ Engine
       </button>
     </div>
   );

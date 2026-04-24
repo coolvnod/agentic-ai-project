@@ -11,6 +11,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { normalizeIncomingPosition, useAgentsStore } from '@/store/agentsStore';
 import { useUIStore } from '@/store/uiStore';
 import { configStore } from '@/store/configStore';
+import { useSystemStore } from '@/store/systemStore';
 import { useMovementStore, movementStore } from '@/store/movementStore';
 import { tileToPixelCenter, getArrivalStateForMovementType } from '@/lib/movement';
 import { createWaypointSet, getAllWaypoints } from '@/lib/waypoints';
@@ -66,6 +67,8 @@ type EventPayloadMap = {
   'agent:position': { agentId: string; position: Position; direction?: Position['direction'] };
   'agent:appearance': { agentId: string; appearance: Agent['appearance'] };
   'agent:movement': AgentMovementEventPayload;
+  'system:trace': import('@agentic-office/shared').SystemTraceEventPayload;
+  'system:metrics': import('@agentic-office/shared').SystemMetricsEventPayload;
 };
 
 export function useAgents() {
@@ -508,6 +511,16 @@ export function useAgents() {
         const payload = lastEvent.payload as EventPayloadMap['agent:conference_end'];
         const { removeMeeting } = useAgentsStore.getState();
         removeMeeting(payload.meetingId);
+        break;
+      }
+      case 'system:trace': {
+        const payload = lastEvent.payload as EventPayloadMap['system:trace'];
+        useSystemStore.getState().addTrace(payload);
+        break;
+      }
+      case 'system:metrics': {
+        const payload = lastEvent.payload as EventPayloadMap['system:metrics'];
+        useSystemStore.getState().setMetrics(payload);
         break;
       }
       default:

@@ -3,6 +3,7 @@ import type { BackendWaypoint, BackendWaypointType } from '../data/waypoints.js'
 import { findPath } from './PathfindingService.js';
 import { agenticOfficeConfig } from '../config/agenticOfficeConfig.js';
 import type { AgentStateManager } from './AgentStateManager.js';
+import { systemMonitor } from './SystemMonitorService.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('trace');
@@ -179,12 +180,22 @@ export class MovementEngine {
           targetPosition: { x: waypoint.x, y: waypoint.y },
           sameTile,
         }, '[MovementEngine] conference same-tile check');
+        const startTime = performance.now();
         const path = findPath(
           { x: agent.position.x, y: agent.position.y },
           { x: waypoint.x, y: waypoint.y },
           this.walkable,
           this.noGoTiles,
         );
+        const duration = performance.now() - startTime;
+
+        systemMonitor.trace('debug', 'Pathfinding', `Calculated conference path for ${agentId}`, {
+          durationMs: duration.toFixed(2),
+          steps: path.length,
+          from: { x: agent.position.x, y: agent.position.y },
+          to: { x: waypoint.x, y: waypoint.y }
+        });
+
         logger.info({
           agentId,
           startPosition: { x: agent.position.x, y: agent.position.y },
@@ -371,12 +382,19 @@ export class MovementEngine {
           const dynamicNoGo = new Set(this.noGoTiles);
           dynamicNoGo.add(`${nextStep.x},${nextStep.y}`);
 
+          const startTime = performance.now();
           const newPath = findPath(
             currentPosition,
             movement.destination,
             this.walkable,
             dynamicNoGo,
           );
+          const duration = performance.now() - startTime;
+
+          systemMonitor.trace('info', 'Collision', `Rerouting agent ${agent.id} due to blockage`, {
+            durationMs: duration.toFixed(2),
+            blockedAt: { x: nextStep.x, y: nextStep.y }
+          });
 
           if (newPath.length > 1) {
             this.blockedSince.delete(agent.id);

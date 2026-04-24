@@ -11,6 +11,7 @@ import { AgentStateManager } from './services/AgentStateManager.js';
 import { loadOfficeLayoutWithCollisionGrid } from './services/CollisionGridLoader.js';
 import { ConfigWatcher } from './services/ConfigWatcher.js';
 import { GatewayClient } from './services/GatewayClient.js';
+import { systemMonitor } from './services/SystemMonitorService.js';
 import agentRoutes from './routes/agents.js';
 import healthRoutes from './routes/health.js';
 import officeRoutes from './routes/office.js';
@@ -50,6 +51,12 @@ async function buildServer(): Promise<AgenticOfficeFastifyInstance> {
     wsServer.broadcast({ type: 'event', event, payload } satisfies WsEventMessage);
   });
 
+  systemMonitor.start((event, payload) => {
+    wsServer.broadcast({ type: 'event', event, payload } as unknown as WsEventMessage);
+  });
+
+  systemMonitor.trace('info', 'Core', 'Agentic-Office backend initialized');
+
   const configWatcher = new ConfigWatcher(config, agentStateManager);
   await configWatcher.start();
 
@@ -72,6 +79,7 @@ async function buildServer(): Promise<AgenticOfficeFastifyInstance> {
   app.addHook('onClose', async () => {
     agentStateManager.shutdown();
     gatewayClient.stop();
+    systemMonitor.stop();
     await configWatcher.stop();
   });
 

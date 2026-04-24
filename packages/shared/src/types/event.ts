@@ -3,7 +3,7 @@ import type { AgentMovementEventPayload, MoveAgentRequest } from './movement.js'
 import type { Tilemap } from './tilemap.js';
 
 export type GatewayEventName = 'agent:status' | 'agent:log' | 'agent:task';
-export type FrontendEventName = GatewayEventName | 'agent:appearance' | 'agent:position' | 'agent:config' | 'agent:conference' | 'agent:conference_start' | 'agent:conference_end' | 'agent:movement';
+export type FrontendEventName = GatewayEventName | 'agent:appearance' | 'agent:position' | 'agent:config' | 'agent:conference' | 'agent:conference_start' | 'agent:conference_end' | 'agent:movement' | 'system:trace' | 'system:metrics';
 
 export interface AgentStatusEventPayload {
   agentId: string;
@@ -56,6 +56,32 @@ export interface AgentConferenceEndEventPayload {
   agentIds: string[];
 }
 
+export interface SystemTraceEventPayload {
+  timestamp: string;
+  level: 'debug' | 'info' | 'warn' | 'error';
+  source: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface SystemMetricsEventPayload {
+  timestamp: string;
+  memory: {
+    rss: number;
+    heapTotal: number;
+    heapUsed: number;
+    external: number;
+  };
+  cpu: {
+    user: number;
+    system: number;
+  };
+  uptime: number;
+  eventLoopLag: number;
+  activeRequests: number;
+  activeConnections: number;
+}
+
 export type FrontendEventPayload =
   | AgentStatusEventPayload
   | AgentLogEventPayload
@@ -66,7 +92,9 @@ export type FrontendEventPayload =
   | AgentConferenceEventPayload
   | AgentConferenceStartEventPayload
   | AgentConferenceEndEventPayload
-  | AgentMovementEventPayload;
+  | AgentMovementEventPayload
+  | SystemTraceEventPayload
+  | SystemMetricsEventPayload;
 
 export interface WsConnectedMessage {
   type: 'connected';
