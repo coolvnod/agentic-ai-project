@@ -151,27 +151,119 @@ export const AppLayout = ({
           <SystemView />
         ) : (
         <section className="grid gap-6 xl:grid-cols-[1fr_320px]">
-          <div className="relative h-[70vh]">
-            <>
-              <OfficeCanvas
-                agents={agents}
-                onAgentSelect={handleAgentSelect}
-                selectedAgentId={selectedAgentId}
-                showLabels={showLabels}
-              />
-              {isAgentsLoading ? (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[28px] bg-black/45 backdrop-blur-sm">
-                  <div className="pixel-frame rounded-[14px] bg-[#0d0a0f]/95 px-5 py-4 text-sm text-[#ddd4c8]">
-                    Loading live office data…
+          <div className="flex flex-col gap-6">
+            <div className="relative h-[65vh]">
+              <>
+                <OfficeCanvas
+                  agents={agents}
+                  onAgentSelect={handleAgentSelect}
+                  selectedAgentId={selectedAgentId}
+                  showLabels={showLabels}
+                />
+                {isAgentsLoading ? (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[28px] bg-black/45 backdrop-blur-sm">
+                    <div className="pixel-frame rounded-[14px] bg-[#0d0a0f]/95 px-5 py-4 text-sm text-[#ddd4c8]">
+                      Loading live office data…
+                    </div>
                   </div>
+                ) : null}
+                {!isAgentsLoading && agents.length === 0 ? (
+                  <div className="pointer-events-none absolute inset-x-6 top-6 rounded-[14px] border border-dashed border-[#d1a45a]/35 bg-black/60 px-4 py-3 text-sm text-[#ddd4c8] backdrop-blur-sm">
+                    No agents connected.
+                  </div>
+                ) : null}
+              </>
+            </div>
+
+            <div className="pixel-frame crt-panel rounded-[18px] bg-[linear-gradient(180deg,rgba(15,12,16,0.98),rgba(9,8,11,0.98))] p-5 h-[28vh] overflow-hidden flex gap-6">
+              <div className="flex-1 flex flex-col h-full overflow-y-auto pr-2">
+                <div className="mb-4">
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-[#9c907f] flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-[#00d4aa] animate-pulse"></span>
+                    CEO Comm-Link
+                  </div>
+                  <h3 className="mt-2 font-display text-lg text-white">Direct Line to Clawdie</h3>
                 </div>
-              ) : null}
-              {!isAgentsLoading && agents.length === 0 ? (
-                <div className="pointer-events-none absolute inset-x-6 top-6 rounded-[14px] border border-dashed border-[#d1a45a]/35 bg-black/60 px-4 py-3 text-sm text-[#ddd4c8] backdrop-blur-sm">
-                  No agents connected.
+                {storeAgents.find(a => a.id === 'main') ? (
+                  <div className="w-full">
+                    {/* Inline Task Assigner for CEO */}
+                    <form 
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const form = e.target as HTMLFormElement;
+                        const input = form.elements.namedItem('taskInput') as HTMLInputElement;
+                        if (!input.value.trim()) return;
+                        
+                        const btn = form.elements.namedItem('submitBtn') as HTMLButtonElement;
+                        btn.disabled = true;
+                        btn.innerText = 'Transmitting...';
+                        
+                        try {
+                          const { assignAgentTask } = await import('@/lib/api');
+                          await assignAgentTask('main', input.value, 'high');
+                          input.value = '';
+                          btn.innerText = 'Transmitted ✅';
+                          setTimeout(() => { btn.disabled = false; btn.innerText = 'Assign Directive'; }, 3000);
+                        } catch (err) {
+                          btn.innerText = 'Transmission Failed';
+                          setTimeout(() => { btn.disabled = false; btn.innerText = 'Assign Directive'; }, 3000);
+                        }
+                      }}
+                    >
+                      <textarea
+                        name="taskInput"
+                        className="pixel-inset w-full rounded-[10px] bg-[#0e0a10] px-3 py-2 text-sm text-white outline-none focus:border-[#d1a45a]/50 min-h-[60px] resize-none"
+                        placeholder="Type a high-level directive for the CEO here..."
+                      />
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          name="submitBtn"
+                          type="submit"
+                          className="pixel-frame rounded-[10px] bg-[#d1a45a]/20 px-4 py-2 text-sm text-[#f0d6a5] transition hover:bg-[#d1a45a]/30"
+                        >
+                          Assign Directive
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                ) : (
+                  <div className="text-sm text-[#b7aa96] mt-4">CEO is currently offline.</div>
+                )}
+              </div>
+              
+              <div className="w-px bg-white/10 mx-2"></div>
+              
+              <div className="flex-1 flex flex-col h-full overflow-hidden">
+                <div className="mb-4">
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-[#9c907f]">Company Pulse</div>
+                  <h3 className="mt-2 font-display text-lg text-white">Live Workforce Feed</h3>
                 </div>
-              ) : null}
-            </>
+                <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
+                  {storeAgents.slice().sort((a, b) => {
+                    const aActive = a.status !== 'offline' && a.status !== 'idle';
+                    const bActive = b.status !== 'offline' && b.status !== 'idle';
+                    return aActive === bActive ? 0 : aActive ? -1 : 1;
+                  }).map(agent => (
+                    <div key={agent.id} className="pixel-inset rounded-[10px] bg-white/[0.02] p-3 flex items-start gap-3">
+                      <div className="mt-1">
+                        <AgentStatus status={agent.status} />
+                      </div>
+                      <div>
+                        <div className="text-sm text-white font-medium flex items-center gap-2">
+                          {agent.displayName || agent.name}
+                          <span className="text-[10px] text-[#9c907f] uppercase tracking-wider">{(agent as any).role || 'Staff'}</span>
+                        </div>
+                        <div className="text-xs text-[#b7aa96] mt-1">
+                          {agent.status === 'working' ? 'Actively processing task...' : 
+                           agent.movementState === 'walking' ? 'Relocating to new station...' :
+                           agent.status === 'idle' ? 'Awaiting instructions.' : 'Offline.'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           {panelOpen ? (

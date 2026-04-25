@@ -158,6 +158,7 @@ export function StaffView() {
   const [fitSignal, setFitSignal] = useState(0);
 
   const handleReset = useCallback(async () => {
+    if (!window.confirm('Are you sure you want to reset the staff hierarchy to defaults? This cannot be undone.')) return;
     setResetting(true);
     await resetToDefaults();
     setTimeout(() => setFitSignal((v) => v + 1), 100);

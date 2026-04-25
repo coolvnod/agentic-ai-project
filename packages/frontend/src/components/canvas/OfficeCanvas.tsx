@@ -79,7 +79,7 @@ export const OfficeCanvas = ({ agents, onAgentSelect, selectedAgentId, showLabel
     ctx.imageSmoothingEnabled = false;
 
     if (recenter) {
-      cameraRef.current.centerOnMap(OFFICE_WIDTH, OFFICE_HEIGHT, width, height);
+      cameraRef.current.centerOnMap(1152, 832, width, height);
       setCameraState(cameraRef.current.getSnapshot());
     }
   }, []);
@@ -376,7 +376,7 @@ export const OfficeCanvas = ({ agents, onAgentSelect, selectedAgentId, showLabel
           const height = Math.max(1, Math.floor(rect.height));
           viewportRef.current = { width, height };
 
-          cameraRef.current.centerOnMap(OFFICE_WIDTH, OFFICE_HEIGHT, width, height);
+          cameraRef.current.centerOnMap(1152, 832, width, height);
           setCameraState(cameraRef.current.getSnapshot());
         }}
         className="pixel-button pointer-events-auto absolute right-4 top-4 flex items-center gap-1.5 rounded-[10px] bg-[#15110d]/90 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-[#f0d6a5] backdrop-blur-md transition-colors hover:brightness-110 active:scale-95"
